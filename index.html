@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Just In Charge</title>
+<meta name="description" content="AC şarjda aracın tam istediğin saatte dolsun diye gereken amperi hesaplar.">
+<meta name="theme-color" content="#0b1215" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#f3f6f5" media="(prefers-color-scheme: light)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="JustInCharge">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>
+:root{
+  --bg:#f3f6f5; --card:#ffffff; --text:#0d1a1c; --muted:#5d6d70; --line:#e2e8e7;
+  --accent:#009966; --accent-2:#00bf8c; --accent-ink:#ffffff; --warn:#c77700; --bad:#d23c3c;
+  --track:#dfe7e5; --shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.06);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0b1215; --card:#141e22; --text:#eaf3f1; --muted:#8fa3a5; --line:#22313600;
+    --accent:#18e0a0; --accent-2:#5af0c4; --accent-ink:#04261b; --warn:#ffb547; --bad:#ff6b6b;
+    --track:#24343a; --shadow:none;
+  }
+}
+:root{color-scheme:light dark}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{
+  font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
+  padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 24px);
+  max-width:520px;margin:0 auto;min-height:100vh;
+}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+header{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.brand{font-weight:800;font-size:19px;letter-spacing:-.02em;flex:1;display:flex;align-items:center;gap:6px;white-space:nowrap;min-width:0}
+.brand svg{width:26px;height:26px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:999px;background:var(--card);box-shadow:var(--shadow);font-size:14px;font-weight:600;max-width:140px}
+.chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon-btn{width:38px;height:38px;border-radius:50%;background:var(--card);box-shadow:var(--shadow);display:grid;place-items:center}
+.icon-btn svg,.chip svg{width:18px;height:18px;flex:none}
+.card{background:var(--card);border-radius:20px;padding:14px 16px;box-shadow:var(--shadow);margin-bottom:10px}
+.label{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;display:flex;justify-content:space-between;align-items:baseline}
+.row{display:flex;align-items:center;gap:12px}
+.big-val{font-size:28px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.big-val small{font-size:18px;color:var(--muted);font-weight:700}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:36px;background:transparent;margin:4px 0 0}
+input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:8px;background:linear-gradient(90deg,var(--accent) var(--p,50%),var(--track) var(--p,50%))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;border-radius:50%;background:#fff;margin-top:-10px;box-shadow:0 1px 4px rgba(0,0,0,.3);border:3px solid var(--accent)}
+input[type=range]::-moz-range-track{height:8px;border-radius:8px;background:var(--track)}
+input[type=range]::-moz-range-progress{height:8px;border-radius:8px;background:var(--accent)}
+input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#fff;border:3px solid var(--accent)}
+.steppers{display:flex;gap:6px;margin-left:auto}
+.step{width:38px;height:38px;border-radius:12px;background:var(--track);font-size:20px;font-weight:700;display:grid;place-items:center}
+.quick{display:flex;gap:8px;margin-top:6px}
+.quick button{flex:1;padding:8px 0;border-radius:12px;background:var(--track);font-weight:700;font-size:14px}
+.quick button.on{background:var(--accent);color:var(--accent-ink)}
+.time-wrap{display:flex;align-items:center;gap:12px;margin-top:8px}
+input[type=time]{font:inherit;font-size:26px;font-weight:800;color:var(--text);background:var(--track);border:0;border-radius:14px;padding:6px 10px;width:100%;min-height:50px;margin-top:8px;font-variant-numeric:tabular-nums;-webkit-appearance:none;appearance:none;text-align:left}
+.times{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tcol{min-width:0}
+.tcol .label{min-height:20px;align-items:center}
+.day-tag{display:block;font-size:13px;font-weight:700;color:var(--muted);margin-top:6px}
+.now-btn{font-size:12px;font-weight:800;color:var(--accent);padding:2px 6px;margin:-2px -6px -2px 0;text-transform:none;letter-spacing:0;visibility:hidden}
+.now-btn.show{visibility:visible}
+.result{background:linear-gradient(140deg,var(--accent),var(--accent-2));color:var(--accent-ink);box-shadow:0 10px 30px color-mix(in srgb,var(--accent) 35%,transparent)}
+.result .label{color:inherit;opacity:.8}
+.amp{font-size:76px;font-weight:900;letter-spacing:-.04em;line-height:1;margin:6px 0 2px;font-variant-numeric:tabular-nums}
+.amp small{font-size:34px;font-weight:800;margin-left:4px}
+.sub{font-weight:700;opacity:.9}
+.stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:16px}
+.stat{background:rgba(255,255,255,.18);border-radius:14px;padding:9px 8px;min-width:0}
+.stat b{display:block;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.stat span{display:block;font-size:11px;opacity:.85;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.note{margin-top:14px;padding:12px;border-radius:14px;background:rgba(0,0,0,.14);font-weight:600;font-size:15px;display:none}
+.note.show{display:block}
+.result.warn{background:linear-gradient(140deg,#e08a00,#ffb547);color:#2b1a00}
+.result.done{background:linear-gradient(140deg,#5b6b70,#8a9a9e);color:#fff}
+.foot{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
+/* sheets */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:10}
+.sheet{position:fixed;left:0;right:0;bottom:0;max-width:520px;margin:0 auto;background:var(--card);border-radius:24px 24px 0 0;padding:20px 16px calc(env(safe-area-inset-bottom) + 20px);z-index:11;transform:translateY(105%);transition:transform .25s ease;max-height:90vh;overflow:auto}
+.sheet.open{transform:none}
+.scrim.open{display:block}
+.sheet h2{margin:0 0 4px;font-size:22px;letter-spacing:-.02em}
+.sheet p.hint{margin:0 0 16px;color:var(--muted);font-size:15px}
+.field{display:block;margin-bottom:12px}
+.field span{display:block;font-size:13px;font-weight:600;color:var(--muted);margin-bottom:6px}
+.field input,.field select{width:100%;font:inherit;font-size:17px;color:var(--text);background:var(--track);border:0;border-radius:12px;padding:12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{width:100%;padding:14px;border-radius:14px;background:var(--accent);color:var(--accent-ink);font-weight:800;font-size:17px;margin-top:4px}
+.btn.ghost{background:var(--track);color:var(--text)}
+.veh{display:flex;align-items:center;gap:10px;padding:12px;border-radius:14px;background:var(--track);margin-bottom:8px}
+.veh.sel{outline:2px solid var(--accent)}
+.veh .n{flex:1;font-weight:700}
+.veh .k{color:var(--muted);font-size:14px;font-weight:600}
+.veh button.del{color:var(--bad);font-weight:700;padding:4px 8px}
+.seg{display:flex;background:var(--track);border-radius:12px;padding:3px}
+.seg button{flex:1;padding:9px;border-radius:10px;font-weight:700;font-size:15px}
+.seg button.on{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.err{color:var(--bad);font-weight:600;font-size:14px;min-height:18px;margin:-4px 0 8px}
+hr{border:0;border-top:1px solid var(--track);margin:16px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="var(--accent)" d="M13.5 2 4 13.5h6.5L9.5 22 20 9.5h-6.6z"/></svg>
+    Just In Charge
+  </div>
+  <button class="chip" id="vehChip" aria-label="Vehicle">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14v-5l-2-5H7l-2 5z"/><circle cx="8" cy="17" r="1.5"/><circle cx="16" cy="17" r="1.5"/></svg>
+    <span id="vehChipName">—</span>
+  </button>
+  <button class="icon-btn" id="setBtn" aria-label="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>
+  </button>
+</header>
+
+<main>
+  <section class="card">
+    <div class="label"><span data-t="current">Mevcut şarj</span></div>
+    <div class="row">
+      <div class="big-val"><span id="curVal">30</span><small>%</small></div>
+      <div class="steppers"><button class="step" data-step="cur" data-d="-1">−</button><button class="step" data-step="cur" data-d="1">+</button></div>
+    </div>
+    <input type="range" id="cur" min="0" max="99" value="30" aria-label="Current %">
+  </section>
+
+  <section class="card">
+    <div class="label"><span data-t="target">Hedef şarj</span></div>
+    <div class="row">
+      <div class="big-val"><span id="tgtVal">100</span><small>%</small></div>
+      <div class="steppers"><button class="step" data-step="tgt" data-d="-1">−</button><button class="step" data-step="tgt" data-d="1">+</button></div>
+    </div>
+    <input type="range" id="tgt" min="1" max="100" value="100" aria-label="Target %">
+    <div class="quick" id="quickTgt"><button data-v="80">80%</button><button data-v="90">90%</button><button data-v="100">100%</button></div>
+  </section>
+
+  <section class="card times">
+    <div class="tcol">
+      <div class="label"><span data-t="start">Başlangıç</span><button class="now-btn" id="nowBtn" data-t="now">Şimdi</button></div>
+      <input type="time" id="start" aria-label="Start">
+      <span class="day-tag" id="startTag"></span>
+    </div>
+    <div class="tcol">
+      <div class="label"><span data-t="readyBy">Bitiş</span></div>
+      <input type="time" id="end" value="08:00" aria-label="Ready by">
+      <span class="day-tag" id="dayTag"></span>
+    </div>
+  </section>
+
+  <section class="card result" id="result">
+    <div class="label"><span data-t="setTo">Şarj akımını ayarla</span><span id="phaseTag"></span></div>
+    <div class="amp"><span id="ampVal">–</span><small>A</small></div>
+    <div class="sub" id="subLine"></div>
+    <div class="stats">
+      <div class="stat"><b id="sEnergy">–</b><span data-t="energy">Gereken enerji</span></div>
+      <div class="stat"><b id="sLeft">–</b><span data-t="timeLeft">Şarj süresi</span></div>
+      <div class="stat"><b id="sFinish">–</b><span data-t="finishes">Biteceği saat</span></div>
+    </div>
+    <div class="note" id="note"></div>
+  </section>
+  <div class="foot" id="footNote"></div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- Vehicles sheet -->
+<section class="sheet" id="vehSheet" aria-modal="true" role="dialog">
+  <h2 id="vehTitle" data-t="vehicles">Araçlarım</h2>
+  <p class="hint" id="vehHint" data-t="vehHint">Aracının net batarya kapasitesini gir. Bu cihazda saklanır.</p>
+  <div id="vehList"></div>
+  <hr id="vehHr">
+  <div class="two">
+    <label class="field"><span data-t="vName">Araç adı</span><input id="vName" placeholder="Model Y" maxlength="30"></label>
+    <label class="field"><span data-t="vCap">Kapasite (kWh)</span><input id="vCap" inputmode="decimal" placeholder="75"></label>
+  </div>
+  <div class="err" id="vErr"></div>
+  <button class="btn" id="vAdd" data-t="vAdd">Aracı kaydet</button>
+  <button class="btn ghost" id="vClose" data-t="close" style="margin-top:8px">Kapat</button>
+</section>
+
+<!-- Settings sheet -->
+<section class="sheet" id="setSheet" aria-modal="true" role="dialog">
+  <h2 data-t="settings">Ayarlar</h2>
+  <p class="hint" data-t="setHint">Varsayılanlar 3 faz, 230 V ve 32 A şarj için ayarlı (22 kW).</p>
+  <label class="field"><span data-t="phases">Faz</span>
+    <div class="seg" id="phaseSeg"><button data-v="1">1</button><button data-v="3">3</button></div>
+  </label>
+  <div class="two">
+    <label class="field"><span data-t="voltage">Gerilim (V)</span><input id="sVolt" inputmode="numeric"></label>
+    <label class="field"><span data-t="eff">Verim (%)</span><input id="sEff" inputmode="numeric"></label>
+    <label class="field"><span data-t="minA">En düşük akım (A)</span><input id="sMin" inputmode="numeric"></label>
+    <label class="field"><span data-t="maxA">En yüksek akım (A)</span><input id="sMax" inputmode="numeric"></label>
+  </div>
+  <label class="field"><span data-t="lang">Dil / Language</span>
+    <div class="seg" id="langSeg"><button data-v="tr">Türkçe</button><button data-v="en">English</button></div>
+  </label>
+  <p class="hint" data-t="effHint">Verim: AC şarjda prizden çekilen enerjinin bir kısmı ısıya gider. %90 güvenli bir varsayım; araç hedefe geç kalırsa düşür.</p>
+  <button class="btn" id="sClose" data-t="done">Tamam</button>
+</section>
+
+<script>
+(() => {
+  const KEY = 'jic.v1';
+  const DEF = { vehicles: [], sel: null, cur: 30, tgt: 100, end: '08:00',
+    s: { phases: 3, volt: 230, eff: 90, min: 6, max: 32 }, lang: null };
+
+  const T = {
+    tr: {
+      current:'Mevcut şarj', target:'Hedef şarj', readyBy:'Bitiş', start:'Başlangıç', now:'Şimdi', yesterday:'dün', nowTag:'şu an', setTo:'Şarj akımını ayarla',
+      energy:'Gereken enerji', timeLeft:'Şarj süresi', finishes:'Biteceği saat',
+      vehicles:'Araçlarım', vehHint:'Aracının net batarya kapasitesini gir. Bu cihazda saklanır.',
+      welcome:'Hoş geldin!', welcomeHint:'Başlamak için aracının net batarya kapasitesini gir. Bir kere sorarım, bu cihazda saklarım.',
+      vName:'Araç adı', vCap:'Kapasite (kWh)', vAdd:'Aracı kaydet', close:'Kapat',
+      settings:'Ayarlar', setHint:'Varsayılanlar 3 faz, 230 V ve 32 A şarj için ayarlı (22 kW).',
+      phases:'Faz', voltage:'Gerilim (V)', eff:'Verim (%)', minA:'En düşük akım (A)', maxA:'En yüksek akım (A)', lang:'Dil / Language',
+      effHint:'Verim: AC şarjda prizden çekilen enerjinin bir kısmı ısıya gider. %90 güvenli bir varsayım; araç hedefe geç kalırsa düşür.',
+      done:'Tamam', today:'bugün', tomorrow:'yarın', phase:'faz', del:'Sil',
+      errCap:'Geçerli bir kapasite gir (5–250 kWh).', myCar:'Aracım',
+      atTarget:'Zaten hedefte', atTargetNote:'Mevcut şarj hedefe eşit ya da üstünde, şarja gerek yok.',
+      tooFast:'Tam güçte bile yetişmiyor', tooFastNote:(t,p)=>`${t} saatine kadar en fazla %${p} olur. En yüksek akımda bırak.`,
+      tooFastFin:(t)=>`En yüksek akımla hedefe ${t} civarı ulaşır.`,
+      tooSlow:(a,t)=>`Gereken akım en düşük sınırın (${a} A) altında. Şarjı ${t} saatinde başlat ya da şimdi takıp araçtan zamanlı şarj kur.`,
+      okSub:(kw)=>`≈ ${kw} kW şarj gücü`,
+      foot:(cap)=>`Hesap ${cap} kWh kapasite üzerinden. Son %10'luk dilimde araç akımı kendisi düşürebilir; birkaç dakika pay bırakıldı.`,
+      h:'sa', m:'dk', confirmDel:'Bu aracı silmek istediğine emin misin?'
+    },
+    en: {
+      current:'Current charge', target:'Target charge', readyBy:'Ready by', start:'Start', now:'Now', yesterday:'yesterday', nowTag:'now', setTo:'Set charging current to',
+      energy:'Energy needed', timeLeft:'Charge window', finishes:'Finishes at',
+      vehicles:'My vehicles', vehHint:'Enter your vehicle’s usable battery capacity. Stored on this device only.',
+      welcome:'Welcome!', welcomeHint:'To get started, enter your vehicle’s usable battery capacity. You only do this once – it’s stored on this device.',
+      vName:'Vehicle name', vCap:'Capacity (kWh)', vAdd:'Save vehicle', close:'Close',
+      settings:'Settings', setHint:'Defaults are set for 3-phase, 230 V, 32 A charging (22 kW).',
+      phases:'Phases', voltage:'Voltage (V)', eff:'Efficiency (%)', minA:'Minimum current (A)', maxA:'Maximum current (A)', lang:'Dil / Language',
+      effHint:'Efficiency: AC charging loses some energy as heat. 90% is a safe default; lower it if your car finishes late.',
+      done:'Done', today:'today', tomorrow:'tomorrow', phase:'phase', del:'Delete',
+      errCap:'Enter a valid capacity (5–250 kWh).', myCar:'My car',
+      atTarget:'Already there', atTargetNote:'Current charge is at or above the target – no charging needed.',
+      tooFast:'Not reachable even at full power', tooFastNote:(t,p)=>`By ${t} you’ll reach at most ${p}%. Leave it at maximum current.`,
+      tooFastFin:(t)=>`At maximum current it reaches the target around ${t}.`,
+      tooSlow:(a,t)=>`Required current is below the minimum (${a} A). Start charging at ${t}, or plug in now and set a scheduled start in the car.`,
+      okSub:(kw)=>`≈ ${kw} kW charging power`,
+      foot:(cap)=>`Based on ${cap} kWh capacity. Cars may taper current in the last ~10%; a few minutes of buffer is included.`,
+      h:'h', m:'min', confirmDel:'Delete this vehicle?'
+    }
+  };
+
+  const $ = id => document.getElementById(id);
+  let st = load();
+  let lang = st.lang || ((navigator.language||'tr').toLowerCase().startsWith('tr') ? 'tr' : 'en');
+  const t = k => T[lang][k];
+
+  function load(){
+    try { const v = JSON.parse(localStorage.getItem(KEY)); if (v) return { ...DEF, ...v, s: { ...DEF.s, ...(v.s||{}) } }; } catch(e){}
+    return structuredClone(DEF);
+  }
+  function save(){ try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e){} }
+
+  const nf = (n, d=1) => new Intl.NumberFormat(lang==='tr'?'tr-TR':'en-US',{maximumFractionDigits:d,minimumFractionDigits:0}).format(n);
+  const hhmm = d => d.toLocaleTimeString(lang==='tr'?'tr-TR':'en-GB',{hour:'2-digit',minute:'2-digit'});
+  const dur = hrs => { const mins = Math.max(0, Math.round(hrs*60)); const h = Math.floor(mins/60), m = mins%60; return h ? `${h} ${t('h')} ${m} ${t('m')}` : `${m} ${t('m')}`; };
+  const vehicle = () => st.vehicles.find(v => v.id === st.sel) || st.vehicles[0];
+
+  function applyLang(){
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-t]').forEach(el => { const v = T[lang][el.dataset.t]; if (typeof v === 'string') el.textContent = v; });
+    document.querySelectorAll('#langSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === lang));
+  }
+
+  // Start time: live "now" by default; a custom time is kept only for this session.
+  let customStart = null; // 'HH:MM' or null
+  const pad = n => String(n).padStart(2, '0');
+  const toHM = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  function startDate(now){
+    if (!customStart) return new Date(now);
+    const [h, m] = customStart.split(':').map(Number);
+    const d = new Date(now); d.setHours(h, m, 0, 0);
+    const H12 = 12 * 3.6e6;
+    if (d < now - H12) d.setDate(d.getDate() + 1);      // e.g. now 23:00, start 01:00 -> tomorrow
+    else if (d > +now + H12) d.setDate(d.getDate() - 1); // e.g. now 00:30, start 23:50 -> yesterday
+    return d;
+  }
+  function endDate(start){
+    const [h, m] = (st.end || '08:00').split(':').map(Number);
+    const d = new Date(start); d.setHours(h, m, 0, 0);
+    if (d <= start) d.setDate(d.getDate() + 1);
+    return d;
+  }
+  function dayLabel(d, now){
+    const a = new Date(d); a.setHours(0,0,0,0); const b = new Date(now); b.setHours(0,0,0,0);
+    const diff = Math.round((a - b) / 864e5);
+    return diff === 0 ? t('today') : diff === 1 ? t('tomorrow') : diff === -1 ? t('yesterday') : '';
+  }
+
+  function setRangeFill(el){ const p = (el.value - el.min) / (el.max - el.min) * 100; el.style.setProperty('--p', p + '%'); }
+
+  function render(){
+    const v = vehicle();
+    $('vehChipName').textContent = v ? v.name : '—';
+    $('cur').value = st.cur; $('curVal').textContent = st.cur; setRangeFill($('cur'));
+    $('tgt').value = st.tgt; $('tgtVal').textContent = st.tgt; setRangeFill($('tgt'));
+    document.querySelectorAll('#quickTgt button').forEach(b => b.classList.toggle('on', +b.dataset.v === st.tgt));
+    $('end').value = st.end;
+
+    const now = new Date(), start = startDate(now), end = endDate(start);
+    if (document.activeElement !== $('start')) $('start').value = customStart || toHM(now);
+    $('nowBtn').classList.toggle('show', !!customStart);
+    $('startTag').textContent = customStart ? dayLabel(start, now) : t('nowTag');
+    $('dayTag').textContent = dayLabel(end, now);
+
+    const s = st.s;
+    $('phaseTag').textContent = `${s.phases} ${t('phase')} · ${s.volt} V`;
+    const res = $('result'), note = $('note');
+    res.classList.remove('warn','done'); note.classList.remove('show');
+    if (!v) { $('ampVal').textContent = '–'; return; }
+
+    const cap = v.cap;
+    const eBatt = cap * Math.max(0, st.tgt - st.cur) / 100;      // kWh into battery
+    const eGrid = eBatt / (s.eff / 100);                          // kWh from wall
+    const hours = (end - start) / 3.6e6;
+    const perA = s.phases * s.volt / 1000;                        // kW per amp
+    $('footNote').textContent = t('foot')(nf(cap));
+    $('sEnergy').textContent = `${nf(eBatt)} kWh`;
+    $('sLeft').textContent = dur(hours);
+
+    if (eBatt <= 0) {
+      res.classList.add('done');
+      $('ampVal').textContent = '0'; $('subLine').textContent = t('atTarget');
+      $('sFinish').textContent = '–';
+      note.textContent = t('atTargetNote'); note.classList.add('show');
+      return;
+    }
+
+    const req = eGrid / (hours * perA);
+    let amps = Math.ceil(req);
+
+    if (amps > s.max) {
+      amps = s.max;
+      const fin = new Date(start.getTime() + eGrid / (amps * perA) * 3.6e6);
+      const reach = Math.min(100, st.cur + amps * perA * hours * (s.eff/100) / cap * 100);
+      res.classList.add('warn');
+      $('ampVal').textContent = amps; $('subLine').textContent = t('tooFast');
+      $('sFinish').textContent = hhmm(fin);
+      note.textContent = t('tooFastNote')(hhmm(end), Math.floor(reach)) + ' ' + t('tooFastFin')(hhmm(fin));
+      note.classList.add('show');
+      return;
+    }
+
+    if (amps < s.min) {
+      amps = s.min;
+      const need = eGrid / (amps * perA);
+      const start = new Date(end.getTime() - need * 3.6e6);
+      $('ampVal').textContent = amps; $('subLine').textContent = t('okSub')(nf(amps*perA));
+      $('sFinish').textContent = hhmm(end);
+      note.textContent = t('tooSlow')(s.min, hhmm(start)); note.classList.add('show');
+      return;
+    }
+
+    const fin = new Date(start.getTime() + eGrid / (amps * perA) * 3.6e6);
+    $('ampVal').textContent = amps;
+    $('subLine').textContent = t('okSub')(nf(amps * perA));
+    $('sFinish').textContent = hhmm(fin);
+  }
+
+  // ----- sheets -----
+  function openSheet(id){ $('scrim').classList.add('open'); $(id).classList.add('open'); }
+  function closeSheets(){ if (!st.vehicles.length) return; $('scrim').classList.remove('open'); document.querySelectorAll('.sheet').forEach(s => s.classList.remove('open')); }
+
+  function renderVehicles(){
+    const first = !st.vehicles.length;
+    $('vehTitle').textContent = first ? t('welcome') : t('vehicles');
+    $('vehHint').textContent = first ? t('welcomeHint') : t('vehHint');
+    $('vClose').style.display = first ? 'none' : '';
+    $('vehHr').style.display = first ? 'none' : '';
+    const list = $('vehList'); list.innerHTML = '';
+    st.vehicles.forEach(v => {
+      const row = document.createElement('div');
+      row.className = 'veh' + (v.id === (vehicle()||{}).id ? ' sel' : '');
+      const n = document.createElement('div'); n.className = 'n'; n.textContent = v.name;
+      const k = document.createElement('div'); k.className = 'k'; k.textContent = `${nf(v.cap)} kWh`;
+      const d = document.createElement('button'); d.className = 'del'; d.textContent = t('del');
+      d.onclick = e => { e.stopPropagation(); if (!confirm(t('confirmDel'))) return;
+        st.vehicles = st.vehicles.filter(x => x.id !== v.id);
+        if (st.sel === v.id) st.sel = st.vehicles[0]?.id || null;
+        save(); renderVehicles(); render(); };
+      row.append(n, k, d);
+      row.onclick = () => { st.sel = v.id; save(); render(); closeSheets(); };
+      list.append(row);
+    });
+  }
+
+  $('vAdd').onclick = () => {
+    const cap = parseFloat(($('vCap').value || '').replace(',', '.'));
+    if (!(cap >= 5 && cap <= 250)) { $('vErr').textContent = t('errCap'); return; }
+    $('vErr').textContent = '';
+    const name = ($('vName').value || '').trim() || (t('myCar') + (st.vehicles.length ? ' ' + (st.vehicles.length + 1) : ''));
+    const v = { id: Date.now().toString(36), name, cap: Math.round(cap * 10) / 10 };
+    st.vehicles.push(v); st.sel = v.id; save();
+    $('vName').value = ''; $('vCap').value = '';
+    renderVehicles(); render(); closeSheets();
+  };
+  $('vehChip').onclick = () => { renderVehicles(); openSheet('vehSheet'); };
+  $('vClose').onclick = closeSheets;
+  $('scrim').onclick = () => { readSettings(); closeSheets(); };
+
+  // settings
+  function fillSettings(){
+    const s = st.s;
+    document.querySelectorAll('#phaseSeg button').forEach(b => b.classList.toggle('on', +b.dataset.v === s.phases));
+    $('sVolt').value = s.volt; $('sEff').value = s.eff; $('sMin').value = s.min; $('sMax').value = s.max;
+  }
+  function readSettings(){
+    const num = (id, lo, hi, dflt) => { const n = parseFloat(($(id).value||'').replace(',', '.')); return (n >= lo && n <= hi) ? n : dflt; };
+    const s = st.s;
+    s.volt = num('sVolt', 100, 260, s.volt); s.eff = num('sEff', 50, 100, s.eff);
+    s.min = Math.round(num('sMin', 1, 80, s.min)); s.max = Math.round(num('sMax', 1, 80, s.max));
+    if (s.min > s.max) s.min = s.max;
+    save(); render();
+  }
+  document.querySelectorAll('#phaseSeg button').forEach(b => b.onclick = () => { st.s.phases = +b.dataset.v; fillSettings(); save(); render(); });
+  document.querySelectorAll('#langSeg button').forEach(b => b.onclick = () => { lang = st.lang = b.dataset.v; save(); applyLang(); render(); });
+  $('setBtn').onclick = () => { fillSettings(); openSheet('setSheet'); };
+  $('sClose').onclick = () => { readSettings(); closeSheets(); };
+
+  // inputs
+  const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
+  $('cur').oninput = e => { st.cur = +e.target.value; save(); render(); };
+  $('tgt').oninput = e => { st.tgt = +e.target.value; save(); render(); };
+  document.querySelectorAll('.step').forEach(b => b.onclick = () => {
+    const k = b.dataset.step, d = +b.dataset.d;
+    if (k === 'cur') st.cur = clamp(st.cur + d, 0, 99); else st.tgt = clamp(st.tgt + d, 1, 100);
+    save(); render();
+  });
+  document.querySelectorAll('#quickTgt button').forEach(b => b.onclick = () => { st.tgt = +b.dataset.v; save(); render(); });
+  $('start').onchange = e => { customStart = e.target.value || null; render(); };
+  $('nowBtn').onclick = () => { customStart = null; $('start').blur(); $('start').value = toHM(new Date()); render(); };
+  $('end').oninput = e => { if (e.target.value) { st.end = e.target.value; save(); render(); } };
+
+  applyLang(); render();
+  if (!st.vehicles.length) { renderVehicles(); openSheet('vehSheet'); }
+  setInterval(render, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) render(); });
+
+  if ('serviceWorker' in navigator && location.protocol !== 'file:') navigator.serviceWorker.register('sw.js').catch(()=>{});
+})();
+</script>
+</body>
+</html>
