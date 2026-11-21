@@ -84,10 +84,12 @@ input[type=time]{font:inherit;font-size:26px;font-weight:800;color:var(--text);b
 .result.done{background:linear-gradient(140deg,#5b6b70,#8a9a9e);color:#fff}
 .maxcard .top{display:flex;align-items:center;gap:14px}
 .kwrow{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--track)}
-.kwrow label{flex:1;font-size:14px;font-weight:700;color:var(--muted)}
+.kwrow label{flex:1;white-space:nowrap;font-size:14px;font-weight:700;color:var(--muted)}
 .kwrow input{width:78px;font:inherit;font-size:18px;font-weight:800;text-align:center;color:var(--text);background:var(--track);border:0;border-radius:12px;padding:8px 4px;font-variant-numeric:tabular-nums}
 .kwrow .unit{font-weight:700;color:var(--muted);font-size:14px}
 .kwrow .step{width:36px;height:36px}
+.kwrow input[type=time]{width:auto;min-width:104px;min-height:0;margin:0;font-size:18px;padding:8px 10px;text-align:center}
+.kwrow + .kwrow{margin-top:8px;padding-top:0;border-top:0}
 .reset-btn{font-size:13px;font-weight:800;color:var(--accent);padding:4px 2px;visibility:hidden}
 .reset-btn.show{visibility:visible}
 .maxcard .pct{font-size:40px;font-weight:900;letter-spacing:-.03em;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums;min-width:96px}
@@ -187,6 +189,11 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       <div class="txt"><b id="maxTitle"></b><span id="maxSub"></span></div>
     </div>
     <div class="kwrow">
+      <label for="depIn" data-t="departAt">Çıkış saatim</label>
+      <button class="reset-btn" id="depReset" data-t="sameAsEnd">Bitişle aynı</button>
+      <input type="time" id="depIn" aria-label="Departure">
+    </div>
+    <div class="kwrow">
       <label for="kwIn" data-t="realSpeed">Gerçek hız</label>
       <button class="reset-btn" id="kwReset" data-t="reset">Sıfırla</button>
       <button class="step" data-kw="-0.5" aria-label="-0.5 kW">−</button>
@@ -267,8 +274,9 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       h:'sa', m:'dk', confirmDel:'Bu aracı silmek istediğine emin misin?',
       maxTitle:(a,kw)=>`Tam güçte (${a} A · ${kw} kW) şarj edersen`,
       maxTitleReal:(kw,a)=>`${kw} kW ile (≈${a} A) şarj edersen`, realSpeed:'Gerçek hız', reset:'Sıfırla',
-      maxAt:(t)=>`${t} saatinde yaklaşık bu seviyede olur.`,
-      maxFull:(t)=>`${t} civarı %100'e ulaşır, sonra boşta bekler.`
+      maxAt:(t)=>`${t} çıkışında yaklaşık bu şarjla ayrılırsın.`,
+      maxFull:(t)=>`${t} civarı %100'e ulaşır, çıkışa kadar boşta bekler.`,
+      departAt:'Çıkış saatim', sameAsEnd:'Bitişle aynı'
     },
     en: {
       current:'Current charge', target:'Target charge', readyBy:'Ready by', start:'Start', now:'Now', yesterday:'yesterday', nowTag:'now', setTo:'Set charging current to',
@@ -292,8 +300,9 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       h:'h', m:'min', confirmDel:'Delete this vehicle?',
       maxTitle:(a,kw)=>`At full power (${a} A · ${kw} kW)`,
       maxTitleReal:(kw,a)=>`At ${kw} kW (≈${a} A)`, realSpeed:'Actual speed', reset:'Reset',
-      maxAt:(t)=>`you’ll be at about this level by ${t}.`,
-      maxFull:(t)=>`it reaches 100% around ${t}, then sits idle.`
+      maxAt:(t)=>`you’ll leave at ${t} with about this charge.`,
+      maxFull:(t)=>`it reaches 100% around ${t}, then sits idle until you leave.`,
+      departAt:'I leave at', sameAsEnd:'Same as end'
     }
   };
 
@@ -333,8 +342,8 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     else if (d > +now + H12) d.setDate(d.getDate() - 1); // e.g. now 00:30, start 23:50 -> yesterday
     return d;
   }
-  function endDate(start){
-    const [h, m] = (st.end || '08:00').split(':').map(Number);
+  function endDate(start, hm){
+    const [h, m] = (hm || st.end || '08:00').split(':').map(Number);
     const d = new Date(start); d.setHours(h, m, 0, 0);
     if (d <= start) d.setDate(d.getDate() + 1);
     return d;
@@ -383,7 +392,11 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       const pMax = realKw ? Math.min(realKw, pFull) : pFull;
       if (document.activeElement !== $('kwIn')) $('kwIn').value = nf(pMax);
       $('kwReset').classList.toggle('show', !!realKw);
-      const pct = Math.min(100, st.cur + pMax * hours * (s.eff / 100) / cap * 100);
+      const dep = endDate(start, st.depart || st.end);
+      if (document.activeElement !== $('depIn')) $('depIn').value = st.depart || st.end;
+      $('depReset').classList.toggle('show', !!st.depart && st.depart !== st.end);
+      const depHours = (dep - start) / 3.6e6;
+      const pct = Math.min(100, st.cur + pMax * depHours * (s.eff / 100) / cap * 100);
       const pv = Math.floor(pct);
       $('maxPct').innerHTML = lang === 'tr' ? `<small>%</small>${pv}` : `${pv}<small>%</small>`;
       $('maxTitle').textContent = realKw ? t('maxTitleReal')(nf(pMax), nf(pMax / perA, 0)) : t('maxTitle')(s.max, nf(pMax));
@@ -391,7 +404,7 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
         const full = new Date(start.getTime() + cap * (100 - st.cur) / 100 / (s.eff / 100) / pMax * 3.6e6);
         $('maxSub').textContent = t('maxFull')(hhmm(full));
       } else {
-        $('maxSub').textContent = t('maxAt')(hhmm(end));
+        $('maxSub').textContent = t('maxAt')(hhmm(dep));
       }
     }
 
@@ -523,6 +536,8 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
   $('kwIn').onchange = e => { const v = parseFloat((e.target.value || '').replace(',', '.')); setKw(isNaN(v) ? null : Math.max(1, v)); };
   $('kwIn').onfocus = e => e.target.select();
   document.querySelectorAll('[data-kw]').forEach(b => b.onclick = () => { const cur = realKw || fullKw(); setKw(Math.max(1, Math.round((cur + +b.dataset.kw) * 2) / 2)); });
+  $('depIn').onchange = e => { const v = e.target.value; st.depart = (v && v !== st.end) ? v : null; save(); render(); };
+  $('depReset').onclick = () => { st.depart = null; $('depIn').blur(); save(); render(); };
   $('kwReset').onclick = () => { realKw = null; $('kwIn').blur(); render(); };
   $('nowBtn').onclick = () => { customStart = null; $('start').blur(); $('start').value = toHM(new Date()); render(); };
   $('end').oninput = e => { if (e.target.value) { st.end = e.target.value; save(); render(); } };
