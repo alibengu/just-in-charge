@@ -76,6 +76,8 @@ input[type=time]{font:inherit;font-size:26px;font-weight:800;color:var(--text);b
 .stat{background:rgba(255,255,255,.18);border-radius:14px;padding:9px 8px;min-width:0}
 .stat b{display:block;font-size:15px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .stat span{display:block;font-size:11px;opacity:.85;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alt{font-size:14px;font-weight:600;opacity:.85;margin-top:4px;min-height:0}
+.alt:empty{display:none}
 .note{margin-top:14px;padding:12px;border-radius:14px;background:rgba(0,0,0,.14);font-weight:600;font-size:15px;display:none}
 .note.show{display:block}
 .result.warn{background:linear-gradient(140deg,#e08a00,#ffb547);color:#2b1a00}
@@ -171,6 +173,7 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     <div class="label"><span data-t="setTo">Şarj akımını ayarla</span><span id="phaseTag"></span></div>
     <div class="amp"><span id="ampVal">–</span><small>A</small></div>
     <div class="sub" id="subLine"></div>
+    <div class="alt" id="altLine"></div>
     <div class="stats">
       <div class="stat"><b id="sEnergy">–</b><span data-t="energy">Gereken enerji</span></div>
       <div class="stat"><b id="sLeft">–</b><span data-t="timeLeft">Şarj süresi</span></div>
@@ -225,6 +228,9 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     <label class="field"><span data-t="minA">En düşük akım (A)</span><input id="sMin" inputmode="numeric"></label>
     <label class="field"><span data-t="maxA">En yüksek akım (A)</span><input id="sMax" inputmode="numeric"></label>
   </div>
+  <label class="field"><span data-t="rounding">Tam saate denk gelmezse</span>
+    <div class="seg" id="roundSeg"><button data-v="late" data-t="roundLate">Biraz geç bitsin</button><button data-v="early" data-t="roundEarly">Biraz erken bitsin</button></div>
+  </label>
   <label class="field"><span data-t="lang">Dil / Language</span>
     <div class="seg" id="langSeg"><button data-v="tr">Türkçe</button><button data-v="en">English</button></div>
   </label>
@@ -236,7 +242,7 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
 (() => {
   const KEY = 'jic.v1';
   const DEF = { vehicles: [], sel: null, cur: 30, tgt: 100, end: '08:00',
-    s: { phases: 3, volt: 230, eff: 90, min: 6, max: 32 }, lang: null };
+    s: { phases: 3, volt: 230, eff: 90, min: 6, max: 32, round: 'late' }, lang: null };
 
   const T = {
     tr: {
@@ -255,7 +261,9 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       tooFastFin:(t)=>`En yüksek akımla hedefe ${t} civarı ulaşır.`,
       tooSlow:(a,t)=>`Gereken akım en düşük sınırın (${a} A) altında. Şarjı ${t} saatinde başlat ya da şimdi takıp araçtan zamanlı şarj kur.`,
       okSub:(kw)=>`≈ ${kw} kW şarj gücü`,
-      foot:(cap)=>`Hesap ${cap} kWh kapasite üzerinden. Son %10'luk dilimde araç akımı kendisi düşürebilir; birkaç dakika pay bırakıldı.`,
+      foot:(cap)=>`Hesap ${cap} kWh kapasite üzerinden. Son %10'luk dilimde araç akımı kendisi düşürebilir, bu yüzden bitiş saatleri yaklaşıktır.`,
+      rounding:'Tam saate denk gelmezse', roundLate:'Biraz geç bitsin', roundEarly:'Biraz erken bitsin',
+      altLine:(a,tm,d,late)=>`${a} A seçersen ${tm} civarı biter (${d} ${late ? 'geç' : 'erken'}).`,
       h:'sa', m:'dk', confirmDel:'Bu aracı silmek istediğine emin misin?',
       maxTitle:(a,kw)=>`Tam güçte (${a} A · ${kw} kW) şarj edersen`,
       maxTitleReal:(kw,a)=>`${kw} kW ile (≈${a} A) şarj edersen`, realSpeed:'Gerçek hız', reset:'Sıfırla',
@@ -278,7 +286,9 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       tooFastFin:(t)=>`At maximum current it reaches the target around ${t}.`,
       tooSlow:(a,t)=>`Required current is below the minimum (${a} A). Start charging at ${t}, or plug in now and set a scheduled start in the car.`,
       okSub:(kw)=>`≈ ${kw} kW charging power`,
-      foot:(cap)=>`Based on ${cap} kWh capacity. Cars may taper current in the last ~10%; a few minutes of buffer is included.`,
+      foot:(cap)=>`Based on ${cap} kWh capacity. Cars may taper current in the last ~10%, so finish times are approximate.`,
+      rounding:'If it doesn’t land exactly on time', roundLate:'Finish a bit late', roundEarly:'Finish a bit early',
+      altLine:(a,tm,d,late)=>`At ${a} A it finishes around ${tm} (${d} ${late ? 'late' : 'early'}).`,
       h:'h', m:'min', confirmDel:'Delete this vehicle?',
       maxTitle:(a,kw)=>`At full power (${a} A · ${kw} kW)`,
       maxTitleReal:(kw,a)=>`At ${kw} kW (≈${a} A)`, realSpeed:'Actual speed', reset:'Reset',
@@ -394,9 +404,10 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     }
 
     const req = eGrid / (hours * perA);
-    let amps = Math.ceil(req);
+    let amps;
+    $('altLine').textContent = '';
 
-    if (amps > s.max) {
+    if (req > s.max) {
       amps = s.max;
       const fin = new Date(start.getTime() + eGrid / (amps * perA) * 3.6e6);
       const reach = Math.min(100, st.cur + amps * perA * hours * (s.eff/100) / cap * 100);
@@ -408,7 +419,7 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       return;
     }
 
-    if (amps < s.min) {
+    if (req < s.min) {
       amps = s.min;
       const need = eGrid / (amps * perA);
       const start = new Date(end.getTime() - need * 3.6e6);
@@ -418,10 +429,20 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       return;
     }
 
-    const fin = new Date(start.getTime() + eGrid / (amps * perA) * 3.6e6);
+    // Integer amps rarely land exactly on the target time: round per user preference.
+    const finAt = a => new Date(start.getTime() + eGrid / (a * perA) * 3.6e6);
+    const late = s.round !== 'early';
+    amps = Math.min(s.max, Math.max(s.min, late ? Math.floor(req) : Math.ceil(req)));
+    const fin = finAt(amps);
     $('ampVal').textContent = amps;
     $('subLine').textContent = t('okSub')(nf(amps * perA));
     $('sFinish').textContent = hhmm(fin);
+    const other = late ? amps + 1 : amps - 1;
+    const diffMin = d => Math.round(Math.abs(d - end) / 60000);
+    if (other >= s.min && other <= s.max && diffMin(fin) >= 1) {
+      const of = finAt(other);
+      $('altLine').textContent = t('altLine')(other, hhmm(of), dur(diffMin(of) / 60), of > end);
+    }
   }
 
   // ----- sheets -----
@@ -469,6 +490,7 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
   function fillSettings(){
     const s = st.s;
     document.querySelectorAll('#phaseSeg button').forEach(b => b.classList.toggle('on', +b.dataset.v === s.phases));
+    document.querySelectorAll('#roundSeg button').forEach(b => b.classList.toggle('on', b.dataset.v === (s.round || 'late')));
     $('sVolt').value = s.volt; $('sEff').value = s.eff; $('sMin').value = s.min; $('sMax').value = s.max;
   }
   function readSettings(){
@@ -480,6 +502,7 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     save(); render();
   }
   document.querySelectorAll('#phaseSeg button').forEach(b => b.onclick = () => { st.s.phases = +b.dataset.v; fillSettings(); save(); render(); });
+  document.querySelectorAll('#roundSeg button').forEach(b => b.onclick = () => { st.s.round = b.dataset.v; fillSettings(); save(); render(); });
   document.querySelectorAll('#langSeg button').forEach(b => b.onclick = () => { lang = st.lang = b.dataset.v; save(); applyLang(); render(); });
   $('setBtn').onclick = () => { fillSettings(); openSheet('setSheet'); };
   $('sClose').onclick = () => { readSettings(); closeSheets(); };
