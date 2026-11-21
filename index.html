@@ -80,7 +80,14 @@ input[type=time]{font:inherit;font-size:26px;font-weight:800;color:var(--text);b
 .note.show{display:block}
 .result.warn{background:linear-gradient(140deg,#e08a00,#ffb547);color:#2b1a00}
 .result.done{background:linear-gradient(140deg,#5b6b70,#8a9a9e);color:#fff}
-.maxcard{display:flex;align-items:center;gap:14px}
+.maxcard .top{display:flex;align-items:center;gap:14px}
+.kwrow{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--track)}
+.kwrow label{flex:1;font-size:14px;font-weight:700;color:var(--muted)}
+.kwrow input{width:78px;font:inherit;font-size:18px;font-weight:800;text-align:center;color:var(--text);background:var(--track);border:0;border-radius:12px;padding:8px 4px;font-variant-numeric:tabular-nums}
+.kwrow .unit{font-weight:700;color:var(--muted);font-size:14px}
+.kwrow .step{width:36px;height:36px}
+.reset-btn{font-size:13px;font-weight:800;color:var(--accent);padding:4px 2px;visibility:hidden}
+.reset-btn.show{visibility:visible}
 .maxcard .pct{font-size:40px;font-weight:900;letter-spacing:-.03em;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums;min-width:96px}
 .maxcard .pct small{font-size:22px;font-weight:800}
 .maxcard .txt{flex:1;min-width:0}
@@ -172,8 +179,18 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     <div class="note" id="note"></div>
   </section>
   <section class="card maxcard" id="maxCard">
-    <div class="pct" id="maxPct">–</div>
-    <div class="txt"><b id="maxTitle"></b><span id="maxSub"></span></div>
+    <div class="top">
+      <div class="pct" id="maxPct">–</div>
+      <div class="txt"><b id="maxTitle"></b><span id="maxSub"></span></div>
+    </div>
+    <div class="kwrow">
+      <label for="kwIn" data-t="realSpeed">Gerçek hız</label>
+      <button class="reset-btn" id="kwReset" data-t="reset">Sıfırla</button>
+      <button class="step" data-kw="-0.5" aria-label="-0.5 kW">−</button>
+      <input id="kwIn" inputmode="decimal" aria-label="kW">
+      <button class="step" data-kw="0.5" aria-label="+0.5 kW">+</button>
+      <span class="unit">kW</span>
+    </div>
   </section>
   <div class="foot" id="footNote"></div>
 </main>
@@ -241,6 +258,7 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       foot:(cap)=>`Hesap ${cap} kWh kapasite üzerinden. Son %10'luk dilimde araç akımı kendisi düşürebilir; birkaç dakika pay bırakıldı.`,
       h:'sa', m:'dk', confirmDel:'Bu aracı silmek istediğine emin misin?',
       maxTitle:(a,kw)=>`Tam güçte (${a} A · ${kw} kW) şarj edersen`,
+      maxTitleReal:(kw,a)=>`${kw} kW ile (≈${a} A) şarj edersen`, realSpeed:'Gerçek hız', reset:'Sıfırla',
       maxAt:(t)=>`${t} saatinde yaklaşık bu seviyede olur.`,
       maxFull:(t)=>`${t} civarı %100'e ulaşır, sonra boşta bekler.`
     },
@@ -263,6 +281,7 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       foot:(cap)=>`Based on ${cap} kWh capacity. Cars may taper current in the last ~10%; a few minutes of buffer is included.`,
       h:'h', m:'min', confirmDel:'Delete this vehicle?',
       maxTitle:(a,kw)=>`At full power (${a} A · ${kw} kW)`,
+      maxTitleReal:(kw,a)=>`At ${kw} kW (≈${a} A)`, realSpeed:'Actual speed', reset:'Reset',
       maxAt:(t)=>`you’ll be at about this level by ${t}.`,
       maxFull:(t)=>`it reaches 100% around ${t}, then sits idle.`
     }
@@ -292,6 +311,7 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
 
   // Start time: live "now" by default; a custom time is kept only for this session.
   let customStart = null; // 'HH:MM' or null
+  let realKw = null;      // manual actual charging speed (kW) for this session, or null = full power
   const pad = n => String(n).padStart(2, '0');
   const toHM = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   function startDate(now){
@@ -349,11 +369,14 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
 
     // Full-power preview: what % at departure if charged at max current from start.
     {
-      const pMax = s.max * perA;
+      const pFull = s.max * perA;
+      const pMax = realKw ? Math.min(realKw, pFull) : pFull;
+      if (document.activeElement !== $('kwIn')) $('kwIn').value = nf(pMax);
+      $('kwReset').classList.toggle('show', !!realKw);
       const pct = Math.min(100, st.cur + pMax * hours * (s.eff / 100) / cap * 100);
       const pv = Math.floor(pct);
       $('maxPct').innerHTML = lang === 'tr' ? `<small>%</small>${pv}` : `${pv}<small>%</small>`;
-      $('maxTitle').textContent = t('maxTitle')(s.max, nf(pMax));
+      $('maxTitle').textContent = realKw ? t('maxTitleReal')(nf(pMax), nf(pMax / perA, 0)) : t('maxTitle')(s.max, nf(pMax));
       if (pct >= 100) {
         const full = new Date(start.getTime() + cap * (100 - st.cur) / 100 / (s.eff / 100) / pMax * 3.6e6);
         $('maxSub').textContent = t('maxFull')(hhmm(full));
@@ -472,6 +495,12 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
   });
   document.querySelectorAll('#quickTgt button').forEach(b => b.onclick = () => { st.tgt = +b.dataset.v; save(); render(); });
   $('start').onchange = e => { customStart = e.target.value || null; render(); };
+  const fullKw = () => st.s.max * st.s.phases * st.s.volt / 1000;
+  const setKw = v => { realKw = (v > 0 && v < fullKw() - 0.04) ? Math.round(v * 10) / 10 : null; render(); };
+  $('kwIn').onchange = e => { const v = parseFloat((e.target.value || '').replace(',', '.')); setKw(isNaN(v) ? null : Math.max(1, v)); };
+  $('kwIn').onfocus = e => e.target.select();
+  document.querySelectorAll('[data-kw]').forEach(b => b.onclick = () => { const cur = realKw || fullKw(); setKw(Math.max(1, Math.round((cur + +b.dataset.kw) * 2) / 2)); });
+  $('kwReset').onclick = () => { realKw = null; $('kwIn').blur(); render(); };
   $('nowBtn').onclick = () => { customStart = null; $('start').blur(); $('start').value = toHM(new Date()); render(); };
   $('end').oninput = e => { if (e.target.value) { st.end = e.target.value; save(); render(); } };
 
