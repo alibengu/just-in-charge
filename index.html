@@ -80,6 +80,12 @@ input[type=time]{font:inherit;font-size:26px;font-weight:800;color:var(--text);b
 .note.show{display:block}
 .result.warn{background:linear-gradient(140deg,#e08a00,#ffb547);color:#2b1a00}
 .result.done{background:linear-gradient(140deg,#5b6b70,#8a9a9e);color:#fff}
+.maxcard{display:flex;align-items:center;gap:14px}
+.maxcard .pct{font-size:40px;font-weight:900;letter-spacing:-.03em;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums;min-width:96px}
+.maxcard .pct small{font-size:22px;font-weight:800}
+.maxcard .txt{flex:1;min-width:0}
+.maxcard .txt b{display:block;font-size:15px}
+.maxcard .txt span{display:block;font-size:14px;color:var(--muted);font-weight:600;margin-top:2px}
 .foot{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
 /* sheets */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:10}
@@ -165,6 +171,10 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     </div>
     <div class="note" id="note"></div>
   </section>
+  <section class="card maxcard" id="maxCard">
+    <div class="pct" id="maxPct">–</div>
+    <div class="txt"><b id="maxTitle"></b><span id="maxSub"></span></div>
+  </section>
   <div class="foot" id="footNote"></div>
 </main>
 
@@ -229,7 +239,10 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       tooSlow:(a,t)=>`Gereken akım en düşük sınırın (${a} A) altında. Şarjı ${t} saatinde başlat ya da şimdi takıp araçtan zamanlı şarj kur.`,
       okSub:(kw)=>`≈ ${kw} kW şarj gücü`,
       foot:(cap)=>`Hesap ${cap} kWh kapasite üzerinden. Son %10'luk dilimde araç akımı kendisi düşürebilir; birkaç dakika pay bırakıldı.`,
-      h:'sa', m:'dk', confirmDel:'Bu aracı silmek istediğine emin misin?'
+      h:'sa', m:'dk', confirmDel:'Bu aracı silmek istediğine emin misin?',
+      maxTitle:(a,kw)=>`Tam güçte (${a} A · ${kw} kW) şarj edersen`,
+      maxAt:(t)=>`${t} saatinde yaklaşık bu seviyede olur.`,
+      maxFull:(t)=>`${t} civarı %100'e ulaşır, sonra boşta bekler.`
     },
     en: {
       current:'Current charge', target:'Target charge', readyBy:'Ready by', start:'Start', now:'Now', yesterday:'yesterday', nowTag:'now', setTo:'Set charging current to',
@@ -248,7 +261,10 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       tooSlow:(a,t)=>`Required current is below the minimum (${a} A). Start charging at ${t}, or plug in now and set a scheduled start in the car.`,
       okSub:(kw)=>`≈ ${kw} kW charging power`,
       foot:(cap)=>`Based on ${cap} kWh capacity. Cars may taper current in the last ~10%; a few minutes of buffer is included.`,
-      h:'h', m:'min', confirmDel:'Delete this vehicle?'
+      h:'h', m:'min', confirmDel:'Delete this vehicle?',
+      maxTitle:(a,kw)=>`At full power (${a} A · ${kw} kW)`,
+      maxAt:(t)=>`you’ll be at about this level by ${t}.`,
+      maxFull:(t)=>`it reaches 100% around ${t}, then sits idle.`
     }
   };
 
@@ -319,6 +335,7 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     $('phaseTag').textContent = `${s.phases} ${t('phase')} · ${s.volt} V`;
     const res = $('result'), note = $('note');
     res.classList.remove('warn','done'); note.classList.remove('show');
+    $('maxCard').style.display = v ? '' : 'none';
     if (!v) { $('ampVal').textContent = '–'; return; }
 
     const cap = v.cap;
@@ -329,6 +346,21 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     $('footNote').textContent = t('foot')(nf(cap));
     $('sEnergy').textContent = `${nf(eBatt)} kWh`;
     $('sLeft').textContent = dur(hours);
+
+    // Full-power preview: what % at departure if charged at max current from start.
+    {
+      const pMax = s.max * perA;
+      const pct = Math.min(100, st.cur + pMax * hours * (s.eff / 100) / cap * 100);
+      const pv = Math.floor(pct);
+      $('maxPct').innerHTML = lang === 'tr' ? `<small>%</small>${pv}` : `${pv}<small>%</small>`;
+      $('maxTitle').textContent = t('maxTitle')(s.max, nf(pMax));
+      if (pct >= 100) {
+        const full = new Date(start.getTime() + cap * (100 - st.cur) / 100 / (s.eff / 100) / pMax * 3.6e6);
+        $('maxSub').textContent = t('maxFull')(hhmm(full));
+      } else {
+        $('maxSub').textContent = t('maxAt')(hhmm(end));
+      }
+    }
 
     if (eBatt <= 0) {
       res.classList.add('done');

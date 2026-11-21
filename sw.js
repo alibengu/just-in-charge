@@ -1,5 +1,5 @@
 // Bump VERSION whenever you deploy changes so phones pick up the new files.
-const VERSION = 'jic-v1';
+const VERSION = 'jic-v2';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
