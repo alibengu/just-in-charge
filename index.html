@@ -82,21 +82,16 @@ input[type=time]{font:inherit;font-size:26px;font-weight:800;color:var(--text);b
 .note.show{display:block}
 .result.warn{background:linear-gradient(140deg,#e08a00,#ffb547);color:#2b1a00}
 .result.done{background:linear-gradient(140deg,#5b6b70,#8a9a9e);color:#fff}
-.maxcard .top{display:flex;align-items:center;gap:14px}
-.kwrow{display:flex;align-items:center;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--track)}
-.kwrow label{flex:1;white-space:nowrap;font-size:14px;font-weight:700;color:var(--muted)}
-.kwrow input{width:78px;font:inherit;font-size:18px;font-weight:800;text-align:center;color:var(--text);background:var(--track);border:0;border-radius:12px;padding:8px 4px;font-variant-numeric:tabular-nums}
-.kwrow .unit{font-weight:700;color:var(--muted);font-size:14px}
-.kwrow .step{width:36px;height:36px}
-.kwrow input[type=time]{width:auto;min-width:104px;min-height:0;margin:0;font-size:18px;padding:8px 10px;text-align:center}
-.kwrow + .kwrow{margin-top:8px;padding-top:0;border-top:0}
-.reset-btn{font-size:13px;font-weight:800;color:var(--accent);padding:4px 2px;visibility:hidden}
+.tabs{display:flex;background:var(--track);border-radius:14px;padding:4px;margin-bottom:12px;gap:4px}
+.tabs button{flex:1;padding:10px 4px;border-radius:11px;font-weight:800;font-size:14px;color:var(--muted);white-space:nowrap}
+.tabs button.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+[hidden]{display:none!important}
+.times:has(.tcol[hidden]){grid-template-columns:1fr}
+.kw-in{width:110px;font:inherit;font-size:28px;font-weight:800;letter-spacing:-.02em;color:var(--text);background:var(--track);border:0;border-radius:12px;padding:2px 10px;font-variant-numeric:tabular-nums}
+.mini{font-size:13px;font-weight:600;color:var(--muted);margin-top:8px}
+.reset-btn{font-size:12px;font-weight:800;color:var(--accent);padding:2px 6px;margin:-2px -6px -2px 0;text-transform:none;letter-spacing:0;visibility:hidden}
 .reset-btn.show{visibility:visible}
-.maxcard .pct{font-size:40px;font-weight:900;letter-spacing:-.03em;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums;min-width:96px}
-.maxcard .pct small{font-size:22px;font-weight:800}
-.maxcard .txt{flex:1;min-width:0}
-.maxcard .txt b{display:block;font-size:15px}
-.maxcard .txt span{display:block;font-size:14px;color:var(--muted);font-weight:600;margin-top:2px}
+.amp.time{font-size:68px}
 .foot{text-align:center;font-size:12px;color:var(--muted);margin-top:8px}
 /* sheets */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;z-index:10}
@@ -139,6 +134,11 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
 </header>
 
 <main>
+  <nav class="tabs" id="tabs">
+    <button data-tab="1" data-t="tab1">Amper</button>
+    <button data-tab="2" data-t="tab2">Dolma saati</button>
+    <button data-tab="3" data-t="tab3">Çıkışta %</button>
+  </nav>
   <section class="card">
     <div class="label"><span data-t="current">Mevcut şarj</span></div>
     <div class="row">
@@ -148,7 +148,7 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     <input type="range" id="cur" min="0" max="99" value="30" aria-label="Current %">
   </section>
 
-  <section class="card">
+  <section class="card" data-show="1 2">
     <div class="label"><span data-t="target">Hedef şarj</span></div>
     <div class="row">
       <div class="big-val"><span id="tgtVal">100</span><small>%</small></div>
@@ -164,14 +164,23 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       <input type="time" id="start" aria-label="Start">
       <span class="day-tag" id="startTag"></span>
     </div>
-    <div class="tcol">
-      <div class="label"><span data-t="readyBy">Bitiş</span></div>
+    <div class="tcol" data-show="1 3">
+      <div class="label"><span data-t="readyBy">Çıkış saati</span></div>
       <input type="time" id="end" value="08:00" aria-label="Ready by">
       <span class="day-tag" id="dayTag"></span>
     </div>
   </section>
 
-  <section class="card result" id="result">
+  <section class="card" data-show="2 3">
+    <div class="label"><span data-t="realSpeed">Gerçek şarj hızı</span><button class="reset-btn" id="kwReset" data-t="fullPower">Tam güç</button></div>
+    <div class="row">
+      <div class="big-val"><input id="kwIn" class="kw-in" inputmode="decimal" aria-label="kW"><small> kW</small></div>
+      <div class="steppers"><button class="step" data-kw="-0.5" aria-label="-0.5 kW">−</button><button class="step" data-kw="0.5" aria-label="+0.5 kW">+</button></div>
+    </div>
+    <div class="mini" id="kwHint"></div>
+  </section>
+
+  <section class="card result" id="result" data-show="1">
     <div class="label"><span data-t="setTo">Şarj akımını ayarla</span><span id="phaseTag"></span></div>
     <div class="amp"><span id="ampVal">–</span><small>A</small></div>
     <div class="sub" id="subLine"></div>
@@ -183,24 +192,27 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     </div>
     <div class="note" id="note"></div>
   </section>
-  <section class="card maxcard" id="maxCard">
-    <div class="top">
-      <div class="pct" id="maxPct">–</div>
-      <div class="txt"><b id="maxTitle"></b><span id="maxSub"></span></div>
+  <section class="card result" id="res2" data-show="2">
+    <div class="label"><span id="r2Label"></span></div>
+    <div class="amp time" id="r2Time">–</div>
+    <div class="sub" id="r2Sub"></div>
+    <div class="stats">
+      <div class="stat"><b id="r2Energy">–</b><span data-t="energy">Gereken enerji</span></div>
+      <div class="stat"><b id="r2Dur">–</b><span data-t="duration">Süre</span></div>
+      <div class="stat"><b id="r2Kw">–</b><span data-t="speed">Hız</span></div>
     </div>
-    <div class="kwrow">
-      <label for="depIn" data-t="departAt">Çıkış saatim</label>
-      <button class="reset-btn" id="depReset" data-t="sameAsEnd">Bitişle aynı</button>
-      <input type="time" id="depIn" aria-label="Departure">
+  </section>
+
+  <section class="card result" id="res3" data-show="3">
+    <div class="label"><span data-t="atDeparture">Çıkışta şarj seviyesi</span></div>
+    <div class="amp" id="r3Pct">–</div>
+    <div class="sub" id="r3Sub"></div>
+    <div class="stats">
+      <div class="stat"><b id="r3Energy">–</b><span data-t="added">Eklenecek</span></div>
+      <div class="stat"><b id="r3Dur">–</b><span data-t="timeLeft">Şarj süresi</span></div>
+      <div class="stat"><b id="r3Full">–</b><span data-t="fullAt">%100 saati</span></div>
     </div>
-    <div class="kwrow">
-      <label for="kwIn" data-t="realSpeed">Gerçek hız</label>
-      <button class="reset-btn" id="kwReset" data-t="reset">Sıfırla</button>
-      <button class="step" data-kw="-0.5" aria-label="-0.5 kW">−</button>
-      <input id="kwIn" inputmode="decimal" aria-label="kW">
-      <button class="step" data-kw="0.5" aria-label="+0.5 kW">+</button>
-      <span class="unit">kW</span>
-    </div>
+    <div class="note" id="r3Note"></div>
   </section>
   <div class="foot" id="footNote"></div>
 </main>
@@ -248,12 +260,12 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
 <script>
 (() => {
   const KEY = 'jic.v1';
-  const DEF = { vehicles: [], sel: null, cur: 30, tgt: 100, end: '08:00',
+  const DEF = { vehicles: [], sel: null, cur: 30, tgt: 100, end: '08:00', tab: '1', kw: null,
     s: { phases: 3, volt: 230, eff: 90, min: 6, max: 32, round: 'late' }, lang: null };
 
   const T = {
     tr: {
-      current:'Mevcut şarj', target:'Hedef şarj', readyBy:'Bitiş', start:'Başlangıç', now:'Şimdi', yesterday:'dün', nowTag:'şu an', setTo:'Şarj akımını ayarla',
+      current:'Mevcut şarj', target:'Hedef şarj', readyBy:'Çıkış saati', start:'Başlangıç', now:'Şimdi', yesterday:'dün', nowTag:'şu an', setTo:'Şarj akımını ayarla',
       energy:'Gereken enerji', timeLeft:'Şarj süresi', finishes:'Biteceği saat',
       vehicles:'Araçlarım', vehHint:'Aracının net batarya kapasitesini gir. Bu cihazda saklanır.',
       welcome:'Hoş geldin!', welcomeHint:'Başlamak için aracının net batarya kapasitesini gir. Bir kere sorarım, bu cihazda saklarım.',
@@ -272,14 +284,15 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       rounding:'Tam saate denk gelmezse', roundLate:'Biraz geç bitsin', roundEarly:'Biraz erken bitsin',
       altLine:(a,tm,d,late)=>`${a} A seçersen ${tm} civarı biter (${d} ${late ? 'geç' : 'erken'}).`,
       h:'sa', m:'dk', confirmDel:'Bu aracı silmek istediğine emin misin?',
-      maxTitle:(a,kw)=>`Tam güçte (${a} A · ${kw} kW) şarj edersen`,
-      maxTitleReal:(kw,a)=>`${kw} kW ile (≈${a} A) şarj edersen`, realSpeed:'Gerçek hız', reset:'Sıfırla',
-      maxAt:(t)=>`${t} çıkışında yaklaşık bu şarjla ayrılırsın.`,
-      maxFull:(t)=>`${t} civarı %100'e ulaşır, çıkışa kadar boşta bekler.`,
-      departAt:'Çıkış saatim', sameAsEnd:'Bitişle aynı'
+      tab1:'Amper', tab2:'Dolma saati', tab3:'Çıkışta %', realSpeed:'Gerçek şarj hızı', fullPower:'Tam güç',
+      kwHint:(a,full)=>`≈ ${a} A · İstasyonun ya da aracın gösterdiği gerçek hızı gir (tam güç ${full} kW).`,
+      reachLabel:(p)=>`%${p}'e ulaşma saati`, duration:'Süre', speed:'Hız', atDeparture:'Çıkışta şarj seviyesi',
+      added:'Eklenecek', fullAt:'%100 saati', r2Sub:(day,d)=>`${day} · şarj ${d} sürer`,
+      r3Sub:(tm)=>`${tm} çıkışında yaklaşık bu seviyede olursun`, r3Full:(tm)=>`Araç ${tm} civarı %100 olur ve çıkışa kadar boşta bekler. İşgaliye riskine dikkat.`,
+      doneNow:'Zaten dolu'
     },
     en: {
-      current:'Current charge', target:'Target charge', readyBy:'Ready by', start:'Start', now:'Now', yesterday:'yesterday', nowTag:'now', setTo:'Set charging current to',
+      current:'Current charge', target:'Target charge', readyBy:'Leave at', start:'Start', now:'Now', yesterday:'yesterday', nowTag:'now', setTo:'Set charging current to',
       energy:'Energy needed', timeLeft:'Charge window', finishes:'Finishes at',
       vehicles:'My vehicles', vehHint:'Enter your vehicle’s usable battery capacity. Stored on this device only.',
       welcome:'Welcome!', welcomeHint:'To get started, enter your vehicle’s usable battery capacity. You only do this once – it’s stored on this device.',
@@ -298,11 +311,12 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
       rounding:'If it doesn’t land exactly on time', roundLate:'Finish a bit late', roundEarly:'Finish a bit early',
       altLine:(a,tm,d,late)=>`At ${a} A it finishes around ${tm} (${d} ${late ? 'late' : 'early'}).`,
       h:'h', m:'min', confirmDel:'Delete this vehicle?',
-      maxTitle:(a,kw)=>`At full power (${a} A · ${kw} kW)`,
-      maxTitleReal:(kw,a)=>`At ${kw} kW (≈${a} A)`, realSpeed:'Actual speed', reset:'Reset',
-      maxAt:(t)=>`you’ll leave at ${t} with about this charge.`,
-      maxFull:(t)=>`it reaches 100% around ${t}, then sits idle until you leave.`,
-      departAt:'I leave at', sameAsEnd:'Same as end'
+      tab1:'Current', tab2:'Full at', tab3:'% at leave', realSpeed:'Actual charging speed', fullPower:'Full power',
+      kwHint:(a,full)=>`≈ ${a} A · Enter the real speed shown by the charger or car (full power ${full} kW).`,
+      reachLabel:(p)=>`Time to reach ${p}%`, duration:'Duration', speed:'Speed', atDeparture:'Charge when you leave',
+      added:'Energy added', fullAt:'100% at', r2Sub:(day,d)=>`${day} · charging takes ${d}`,
+      r3Sub:(tm)=>`you’ll be at about this level when you leave at ${tm}`, r3Full:(tm)=>`The car hits 100% around ${tm} and then sits idle until you leave. Watch out for idle fees.`,
+      doneNow:'Already there'
     }
   };
 
@@ -330,7 +344,6 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
 
   // Start time: live "now" by default; a custom time is kept only for this session.
   let customStart = null; // 'HH:MM' or null
-  let realKw = null;      // manual actual charging speed (kW) for this session, or null = full power
   const pad = n => String(n).padStart(2, '0');
   const toHM = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
   function startDate(now){
@@ -357,6 +370,9 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
   function setRangeFill(el){ const p = (el.value - el.min) / (el.max - el.min) * 100; el.style.setProperty('--p', p + '%'); }
 
   function render(){
+    const tab = String(st.tab || '1');
+    document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === tab));
+    document.querySelectorAll('[data-show]').forEach(el => { el.hidden = !el.dataset.show.split(' ').includes(tab); });
     const v = vehicle();
     $('vehChipName').textContent = v ? v.name : '—';
     $('cur').value = st.cur; $('curVal').textContent = st.cur; setRangeFill($('cur'));
@@ -374,7 +390,6 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     $('phaseTag').textContent = `${s.phases} ${t('phase')} · ${s.volt} V`;
     const res = $('result'), note = $('note');
     res.classList.remove('warn','done'); note.classList.remove('show');
-    $('maxCard').style.display = v ? '' : 'none';
     if (!v) { $('ampVal').textContent = '–'; return; }
 
     const cap = v.cap;
@@ -386,26 +401,40 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
     $('sEnergy').textContent = `${nf(eBatt)} kWh`;
     $('sLeft').textContent = dur(hours);
 
-    // Full-power preview: what % at departure if charged at max current from start.
+    // ----- Tabs 2 & 3: actual speed (kW) -----
     {
       const pFull = s.max * perA;
-      const pMax = realKw ? Math.min(realKw, pFull) : pFull;
-      if (document.activeElement !== $('kwIn')) $('kwIn').value = nf(pMax);
-      $('kwReset').classList.toggle('show', !!realKw);
-      const dep = endDate(start, st.depart || st.end);
-      if (document.activeElement !== $('depIn')) $('depIn').value = st.depart || st.end;
-      $('depReset').classList.toggle('show', !!st.depart && st.depart !== st.end);
-      const depHours = (dep - start) / 3.6e6;
-      const pct = Math.min(100, st.cur + pMax * depHours * (s.eff / 100) / cap * 100);
+      const p = st.kw || pFull;                                  // kW from the wall
+      const eff = s.eff / 100;
+      if (document.activeElement !== $('kwIn')) $('kwIn').value = nf(p);
+      $('kwReset').classList.toggle('show', !!st.kw);
+      $('kwHint').textContent = t('kwHint')(nf(p / perA, 0), nf(pFull));
+      const pctTxt = n => lang === 'tr' ? `<small>%</small>${n}` : `${n}<small>%</small>`;
+
+      // Tab 2: when does it reach the target %?
+      const need2 = cap * Math.max(0, st.tgt - st.cur) / 100;
+      const h2 = need2 / eff / p;
+      const at2 = new Date(start.getTime() + h2 * 3.6e6);
+      $('r2Label').textContent = t('reachLabel')(st.tgt);
+      $('r2Time').textContent = need2 > 0 ? hhmm(at2) : '–';
+      $('r2Sub').textContent = need2 > 0 ? t('r2Sub')(dayLabel(at2, now), dur(h2)) : t('doneNow');
+      $('r2Energy').textContent = `${nf(need2)} kWh`;
+      $('r2Dur').textContent = dur(h2);
+      $('r2Kw').textContent = `${nf(p)} kW`;
+
+      // Tab 3: what % at departure (Çıkış saati)?
+      const pct = Math.min(100, st.cur + p * hours * eff / cap * 100);
       const pv = Math.floor(pct);
-      $('maxPct').innerHTML = lang === 'tr' ? `<small>%</small>${pv}` : `${pv}<small>%</small>`;
-      $('maxTitle').textContent = realKw ? t('maxTitleReal')(nf(pMax), nf(pMax / perA, 0)) : t('maxTitle')(s.max, nf(pMax));
-      if (pct >= 100) {
-        const full = new Date(start.getTime() + cap * (100 - st.cur) / 100 / (s.eff / 100) / pMax * 3.6e6);
-        $('maxSub').textContent = t('maxFull')(hhmm(full));
-      } else {
-        $('maxSub').textContent = t('maxAt')(hhmm(dep));
-      }
+      const hFull = cap * (100 - st.cur) / 100 / eff / p;
+      const atFull = new Date(start.getTime() + hFull * 3.6e6);
+      $('r3Pct').innerHTML = pctTxt(pv);
+      $('r3Sub').textContent = t('r3Sub')(hhmm(end));
+      $('r3Energy').textContent = `${nf(cap * (pct - st.cur) / 100)} kWh`;
+      $('r3Dur').textContent = dur(hours);
+      $('r3Full').textContent = hhmm(atFull);
+      $('r3Note').textContent = pct >= 100 ? t('r3Full')(hhmm(atFull)) : '';
+      $('r3Note').classList.toggle('show', pct >= 100);
+      $('res3').classList.toggle('warn', pct >= 100);
     }
 
     if (eBatt <= 0) {
@@ -532,13 +561,12 @@ hr{border:0;border-top:1px solid var(--track);margin:16px 0}
   document.querySelectorAll('#quickTgt button').forEach(b => b.onclick = () => { st.tgt = +b.dataset.v; save(); render(); });
   $('start').onchange = e => { customStart = e.target.value || null; render(); };
   const fullKw = () => st.s.max * st.s.phases * st.s.volt / 1000;
-  const setKw = v => { realKw = (v > 0 && v < fullKw() - 0.04) ? Math.round(v * 10) / 10 : null; render(); };
+  const setKw = v => { st.kw = (v > 0 && Math.abs(v - fullKw()) > 0.04) ? Math.round(Math.min(50, v) * 10) / 10 : null; save(); render(); };
   $('kwIn').onchange = e => { const v = parseFloat((e.target.value || '').replace(',', '.')); setKw(isNaN(v) ? null : Math.max(1, v)); };
   $('kwIn').onfocus = e => e.target.select();
-  document.querySelectorAll('[data-kw]').forEach(b => b.onclick = () => { const cur = realKw || fullKw(); setKw(Math.max(1, Math.round((cur + +b.dataset.kw) * 2) / 2)); });
-  $('depIn').onchange = e => { const v = e.target.value; st.depart = (v && v !== st.end) ? v : null; save(); render(); };
-  $('depReset').onclick = () => { st.depart = null; $('depIn').blur(); save(); render(); };
-  $('kwReset').onclick = () => { realKw = null; $('kwIn').blur(); render(); };
+  document.querySelectorAll('[data-kw]').forEach(b => b.onclick = () => { const cur = st.kw || fullKw(); setKw(Math.max(1, Math.round((cur + +b.dataset.kw) * 2) / 2)); });
+  $('kwReset').onclick = () => { st.kw = null; $('kwIn').blur(); save(); render(); };
+  document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => { st.tab = b.dataset.tab; save(); render(); window.scrollTo(0, 0); });
   $('nowBtn').onclick = () => { customStart = null; $('start').blur(); $('start').value = toHM(new Date()); render(); };
   $('end').oninput = e => { if (e.target.value) { st.end = e.target.value; save(); render(); } };
 
